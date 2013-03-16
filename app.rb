@@ -15,8 +15,28 @@ post '/git_checkout' do
   redirect '/'
 end
 
+module GitCommands
+  def git_checkout branch = 'master'
+    `git checkout -b #{branch}`
+  end
+
+  def git_fetch_all
+    `git fetch --all`
+  end
+
+  def git_branch_all 
+    `git branch -a`
+  end
+  
+  def git_branch_delete branch
+    `git branch -D #{branch}`
+  end
+end
+
 class GitOperator
   class << self
+    include GitCommands
+
     def get_current_branch_and_other_branches
       return unless outputs = git_branch_all.split("\n")
       current_branch = select_current_branch(outputs)
@@ -47,23 +67,6 @@ class GitOperator
         branch !~ /\A\*\s.+/
       end.map(&:strip).map(&replacer)
     end
-
-    def git_checkout branch = 'master'
-      `git checkout -b #{branch}`
-    end
-
-    def git_fetch_all
-      `git fetch --all`
-    end
-
-    def git_branch_all 
-      `git branch -a`
-    end
-    
-    def git_branch_delete branch
-      `git branch -D #{branch}`
-    end
-
   end
 end
 
