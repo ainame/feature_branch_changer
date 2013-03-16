@@ -14,4 +14,5 @@ OptionParser.new do |opt|
   opt.parse!(ARGV)
 end
 
-FeatureBranchChanger.run! 
+FeatureBranchChanger.run! options
+
