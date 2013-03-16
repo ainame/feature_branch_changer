@@ -1,22 +1,16 @@
 require 'sinatra'
-require 'sinatra/flash'
-
-get '/' do
-  @current_branch, @remote_branches =
-    GitOperator.get_current_branch_and_other_branches
-  erb :index
-end
-
-post '/git_checkout' do
-  GitOperator.checkout_remote_branch_head(
-    params[:branch]
-  ) if params[:branch]
-
-  redirect '/'
-end
+require 'sinatra/base'
 
 module GitCommands
-  def git_checkout branch = 'master'
+  def git_pull remote, branch
+    `git pull #{remote} #{branch}`
+  end
+
+  def git_checkout_already_exists_branch branch
+    `git checkout #{branch}`
+  end
+
+  def git_checkout_new_branch branch
     `git checkout -b #{branch}`
   end
 
@@ -37,7 +31,7 @@ class GitOperator
   class << self
     include GitCommands
 
-    def get_current_branch_and_other_branches
+    def get_current_and_other_branches
       return unless outputs = git_branch_all.split("\n")
       current_branch = select_current_branch(outputs)
       other_branches = select_branches_without_current_branch(outputs)
@@ -45,12 +39,25 @@ class GitOperator
     end
 
     def checkout_remote_branch_head branch
-      current_branch, remote_branches =
-        get_current_branch_and_other_branches
       git_fetch_all
-      git_checkout if current_branch == branch
-      git_checkout branch
-      git_branch_delete branch.sub('(origin)/','')
+
+      current_branch, remote_branches =
+        get_current_and_other_branches
+
+      if branch == 'master'
+        git_checkout_already_exists_branch 'master' unless
+          current_branch == 'master'
+        git_pull 'origin', 'master'
+      elsif branch == current_branch
+        git_checkout_already_exists_branch 'master'
+        git_pull *(branch.split('/'))
+      else
+        git_checkout_new_branch(branch)
+      end
+
+      unless current_branch == 'master'
+        git_branch_delete current_branch
+      end
     end
 
     private
@@ -70,17 +77,40 @@ class GitOperator
   end
 end
 
+class FeatureBranchChanger < Sinatra::Base
+  enable :inline_templates
+
+  get '/' do
+    @current_branch, @remote_branches =
+      GitOperator.get_current_and_other_branches
+    erb :default
+  end
+
+  post '/git_checkout' do
+    GitOperator.checkout_remote_branch_head(
+      params[:branch]
+    ) if params[:branch]
+
+    redirect '/'
+  end
+end
+
 __END__
-@@index
+@@default
 <html>
   <head>
     <title>feature checker</title>
   </head>
-  <body>
-    <h4><%= @current_branch %></h4>
+  <body>  
+    <p>
+      <strong>Current branch</strong>: <%= @current_branch %>
+    </p>
     <div>
       <form action="/git_checkout" method="post">
         <select name="branch">
+          <option value="<%= @current_branch%>">
+            * <%= @current_branch%>
+          </option>
           <% @remote_branches.each do |branch| %>
             <option value="<%= branch %>">
                <%= branch %>
