@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+$:.unshift File.join(Dir.pwd, '.git')
+require 'feature_branch_changer'
+require 'optparse'
+
+options = {
+  port: 9001,
+  host: 'localhost'
+}
+
+OptionParser.new do |opt|
+  opt.on('-p', '--port') {|val| options['port'] = val }
+  opt.on('-h', '--host') {|val| options['host'] = val }
+  opt.parse!(ARGV)
+end
+
+FeatureBranchChanger.run! 
