@@ -8,7 +8,7 @@ get '/' do
 end
 
 post '/git_checkout' do
-  GitOperator.checkout_remote_head_commit(
+  GitOperator.checkout_remote_branch_head(
     params[:branch]
   ) if params[:branch]
 
@@ -44,13 +44,13 @@ class GitOperator
       return current_branch, other_branches
     end
 
-    def checkout_remote_head_branch branch
+    def checkout_remote_branch_head branch
       current_branch, remote_branches =
         get_current_branch_and_other_branches
       git_fetch_all
       git_checkout if current_branch == branch
       git_checkout branch
-      git_branch_delete branch
+      git_branch_delete branch.sub('(origin)/','')
     end
 
     private
